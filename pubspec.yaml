@@ -7,8 +7,14 @@ environment:
   sdk: '>=3.4.3 <4.0.0'
 
 dependencies:
+  bloc: ^8.1.4
+  cached_network_image: ^3.3.1
+  device_preview: ^1.2.0
+  equatable: ^2.0.5
   flutter:
     sdk: flutter
+  flutter_bloc: ^8.1.6
+  smooth_sheets: ^0.9.0
 
 dev_dependencies:
   flutter_test:
