@@ -3,7 +3,9 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'model/product.dart';
 import 'screen/home_screen.dart';
+import 'screen/product_screen.dart';
 import 'widget/cart/cubit/cart_cubit.dart';
 
 void main() {
@@ -36,6 +38,21 @@ class WrapCartBottom extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppWidgetCartBottom(child: const HomeScreen());
+    return AppWidgetCartBottom(
+      child: Navigator(
+        onGenerateRoute: (settings) {
+          Widget page;
+          switch (settings.name) {
+            case '/product':
+              page = ProductScreen(product: settings.arguments as Product);
+              break;
+            case '/':
+            default:
+              page = const HomeScreen();
+          }
+          return MaterialPageRoute(builder: (_) => page);
+        },
+      ),
+    );
   }
 }

@@ -82,13 +82,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             child: GestureDetector(
-              onTap: () => Navigator.push(
+              onTap: () => Navigator.pushNamed(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => ProductScreen(
-                    product: product,
-                  ),
-                ),
+                ProductScreen.routeName,
+                arguments: product,
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12.0),

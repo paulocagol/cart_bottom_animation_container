@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
 import '../../model/product.dart';
+import 'cubit/cart_cubit.dart';
 
 //* Constantes sheet
 const minProportionalExtent = 0.0;
@@ -41,7 +43,7 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
   //* ------------------------------------------------------------------------------------------------
 
   //* Carinho variáveis
-  final ValueNotifier<List<Product>> _cartItems = ValueNotifier<List<Product>>([]);
+  // final ValueNotifier<List<Product>> _cartItems = ValueNotifier<List<Product>>([]);
   final Map<Product, GlobalKey> _cartItemKeys = {};
   final ScrollController _scrollController = ScrollController();
   final List<OverlayEntry> _overlayEntries = [];
@@ -56,18 +58,18 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
   //* ------------------------------------------------------------------------------------------------
 
   //* Variáveis calculadas
-  final ValueNotifier<double> _currentTotalCart = ValueNotifier<double>(0);
+  // final ValueNotifier<double> _currentTotalCart = ValueNotifier<double>(0);
   //* ------------------------------------------------------------------------------------------------
 
   @override
   void initState() {
     super.initState();
 
-    _cartItems.addListener(() {
-      Future.delayed(const Duration(milliseconds: 200), () {
-        _currentTotalCart.value = _cartItems.value.fold(0.0, (previousValue, element) => previousValue + element.price);
-      });
-    });
+    // _cartItems.addListener(() {
+    //   Future.delayed(const Duration(milliseconds: 200), () {
+    //     _currentTotalCart.value = _cartItems.value.fold(0.0, (previousValue, element) => previousValue + element.price);
+    //   });
+    // });
 
     _sheetController = SheetController();
     _heroController =
@@ -155,6 +157,8 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
 
   //* Adiciona um produto ao carrinho com animação.
   Future<void> addToCart(Product product) async {
+    final cartCubit = context.read<CartCubit>();
+
     //? Previne a adição do mesmo produto enquanto ele está animando.
     if (_animatingItems.contains(product)) return;
 
@@ -173,13 +177,13 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
       _imageOffset = productRenderBox.localToGlobal(Offset.zero, ancestor: deviceFrameRenderBox);
       final RenderBox cartRenderBox = cartContext.findRenderObject() as RenderBox;
 
-      if (_cartItems.value.contains(product)) {
+      if (cartCubit.containsProduct(product)) {
         print('Product already in cart');
         var cartItem = _cartItemKeys[product]!;
 
         if (cartItem.currentContext == null) {
           //? Aproxima o scroll até a posição do item
-          final itemIndex = _cartItems.value.indexOf(product);
+          final itemIndex = cartCubit.getIndexOfProduct(product);
           final targetPosition = (itemIndex * 50.0).clamp(0.0, _scrollController.position.maxScrollExtent);
           await _scrollController.animateTo(
             targetPosition,
@@ -220,13 +224,9 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
     }
   }
 
-  void _addItem(Product product) {
-    _cartItems.value = List.from(_cartItems.value)..insert(0, product);
-  }
+  void _addItem(Product product) => context.read<CartCubit>().addProduct(product);
 
-  void _removeItem(Product product) {
-    _cartItems.value = List.from(_cartItems.value)..remove(product);
-  }
+  void _removeItem(Product product) => context.read<CartCubit>().removeProduct(product);
 
   //? Adiciona o item à lista do carrinho.
   Future<GlobalKey<State<StatefulWidget>>> _addItemToCart(Product product) async {
@@ -502,81 +502,81 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
       top: false,
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                height: _currentExtent > maxProportionalExtent ? 0 : 70,
-                decoration: const BoxDecoration(
-                  color: Colors.brown,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(16)),
-                ),
-                child: SizedBox(
-                  key: _cartKey,
-                  child: AnimatedList(
-                    padding: const EdgeInsets.only(
-                      top: 10,
-                      left: 10,
-                      right: 10,
-                      bottom: 10,
+          return BlocConsumer<CartCubit, CartState>(
+            listener: (context, state) {},
+            builder: (context, state) {
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    height: _currentExtent > maxProportionalExtent ? 0 : 70,
+                    decoration: const BoxDecoration(
+                      color: Colors.brown,
+                      borderRadius: BorderRadius.only(topLeft: Radius.circular(16)),
                     ),
-                    key: _listKey,
-                    controller: _scrollController,
-                    scrollDirection: Axis.horizontal,
-                    initialItemCount: _cartItems.value.length,
-                    itemBuilder: (context, index, animation) {
-                      final product = _cartItems.value[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 10.0),
-                        child: SizeTransition(
-                          sizeFactor: animation,
-                          axis: Axis.horizontal,
-                          child: Opacity(
-                            opacity: _animatingItems.contains(product) ? 0 : 1,
-                            child: Hero(
-                              tag: 'product_${product.id}',
-                              child: ClipRRect(
-                                key: _cartItemKeys[product],
-                                borderRadius: BorderRadius.circular(12.0),
-                                child: CachedNetworkImage(
-                                  cacheKey: product.image,
-                                  imageUrl: product.image,
-                                  fit: BoxFit.cover,
-                                  width: 50,
-                                  height: 50,
-                                  placeholder: (context, url) => const SizedBox.shrink(),
+                    child: SizedBox(
+                      key: _cartKey,
+                      child: AnimatedList(
+                        padding: const EdgeInsets.only(
+                          top: 10,
+                          left: 10,
+                          right: 10,
+                          bottom: 10,
+                        ),
+                        key: _listKey,
+                        controller: _scrollController,
+                        scrollDirection: Axis.horizontal,
+                        initialItemCount: state.cartItems.length,
+                        itemBuilder: (context, index, animation) {
+                          final product = state.cartItems[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 10.0),
+                            child: SizeTransition(
+                              sizeFactor: animation,
+                              axis: Axis.horizontal,
+                              child: Opacity(
+                                opacity: _animatingItems.contains(product) ? 0 : 1,
+                                child: Hero(
+                                  tag: 'product_${product.id}',
+                                  child: ClipRRect(
+                                    key: _cartItemKeys[product],
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    child: CachedNetworkImage(
+                                      cacheKey: product.image,
+                                      imageUrl: product.image,
+                                      fit: BoxFit.cover,
+                                      width: 50,
+                                      height: 50,
+                                      placeholder: (context, url) => const SizedBox.shrink(),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.only(top: 10),
-                alignment: Alignment.topCenter,
-                color: Colors.red,
-                height: constraints.maxHeight - 70,
-                width: constraints.maxWidth,
-                child: ValueListenableBuilder<double>(
-                  valueListenable: _currentTotalCart,
-                  builder: (context, value, child) {
-                    return Text(
-                      'Total R\$ ${value.toStringAsFixed(2)}',
+                  Container(
+                    padding: const EdgeInsets.only(top: 10),
+                    alignment: Alignment.topCenter,
+                    color: Colors.red,
+                    height: constraints.maxHeight - 70,
+                    width: constraints.maxWidth,
+                    child: Text(
+                      'Total R\$ ${state.totalPrice.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 16,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
-                    );
-                  },
-                ),
-              )
-            ],
+                    ),
+                  )
+                ],
+              );
+            },
           );
         },
       ),
@@ -643,36 +643,40 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
                   bottom: 0,
                   child: SizedBox(
                     // height: MediaQuery.of(context).size.height,
-                    child: AnimatedList(
-                      primary: true,
-                      shrinkWrap: true,
-                      initialItemCount: _cartItems.value.length,
-                      itemBuilder: (context, index, animation) {
-                        final product = _cartItems.value[index];
-                        return Container(
-                          height: 80,
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Hero(
-                                tag: 'product_${product.id}',
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: CachedNetworkImage(
-                                    cacheKey: product.image,
-                                    imageUrl: product.image,
-                                    fit: BoxFit.cover,
+                    child: BlocBuilder<CartCubit, CartState>(
+                      builder: (context, state) {
+                        return AnimatedList(
+                          primary: true,
+                          shrinkWrap: true,
+                          initialItemCount: state.cartItems.length,
+                          itemBuilder: (context, index, animation) {
+                            final product = state.cartItems[index];
+                            return Container(
+                              height: 80,
+                              padding: const EdgeInsets.all(8.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Hero(
+                                    tag: 'product_${product.id}',
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: CachedNetworkImage(
+                                        cacheKey: product.image,
+                                        imageUrl: product.image,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Produto ${product.id}',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Produto ${product.id}',
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         );
                       },
                     ),
