@@ -10,7 +10,7 @@ class CartCubit extends Cubit<CartState> {
   CartCubit() : super(const CartState(cartItems: [], totalPrice: 0.0, cartItemKeys: {}));
 
   void addProduct(Product product) {
-    final updatedCartItems = List<Product>.from(state.cartItems)..add(product);
+    final updatedCartItems = List<Product>.from(state.cartItems)..insert(0, product);
     final updatedCartItemKeys = Map<Product, GlobalKey>.from(state.cartItemKeys)..addAll({product: GlobalKey()});
     final updatedTotalPrice = updatedCartItems.fold(0.0, (sum, item) => sum + item.price);
     emit(state.copyWith(cartItems: updatedCartItems, totalPrice: updatedTotalPrice, cartItemKeys: updatedCartItemKeys));

@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
 
                   if (context.mounted) {
-                    await AppWidgetCartBottom.of(context).addToCart(product);
+                    await AppWidgetCartBottom.of(context).addToCart(product: product, tag: 'homeScreen');
                     // if (context.mounted) await AppWidgetCartBottom.of(context).hide();
                   }
                 },
@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     cacheKey: product.image,
                     imageUrl: product.image,
                     fit: BoxFit.cover,
-                    key: product.globalKey,
+                    key: product.getGlobalKey('homeScreen'),
                   ),
                 ),
               ),

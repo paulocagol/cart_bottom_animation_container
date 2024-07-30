@@ -156,19 +156,21 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
   }
 
   //* Adiciona um produto ao carrinho com animação.
-  Future<void> addToCart(Product product) async {
+  Future<void> addToCart({required Product product, required String tag}) async {
     final cartCubit = context.read<CartCubit>();
 
     //? Previne a adição do mesmo produto enquanto ele está animando.
     if (_animatingItems.contains(product)) return;
 
-    final productContext = product.globalKey.currentContext;
+    final productContext = product.getGlobalKey(tag).currentContext;
     final cartContext = _cartKey.currentContext;
 
     // final screenFrameContext = _getScreenFrameKey().currentContext;
     final screenFrameContext = context;
     // final screenFrameContext = widget.masterKey.currentContext;
 
+    print('productContext: $productContext');
+    print('cartContext: $cartContext');
     if (productContext != null && cartContext != null) {
       RenderBox productRenderBox = productContext.findRenderObject() as RenderBox;
       final RenderBox deviceFrameRenderBox = screenFrameContext.findRenderObject() as RenderBox;
@@ -284,14 +286,6 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
                     placeholder: (context, url) => const SizedBox.shrink(),
                   ),
                 );
-                // child: CachedNetworkImage(
-                //   cacheKey: product.image,
-                //   imageUrl: product.image,
-                //   fit: BoxFit.cover,
-                //   // width: sizeAnimation.value,
-                //   // height: sizeAnimation.value,
-                //   placeholder: (context, url) => const SizedBox.shrink(),
-                // ),
               },
             ),
           );
@@ -536,6 +530,7 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
                               sizeFactor: animation,
                               axis: Axis.horizontal,
                               child: Opacity(
+                                // opacity: 1,
                                 opacity: _animatingItems.contains(product) ? 0 : 1,
                                 child: Hero(
                                   tag: 'product_${product.id}',

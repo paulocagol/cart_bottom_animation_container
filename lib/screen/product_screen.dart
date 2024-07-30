@@ -16,6 +16,7 @@ class ProductScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    GlobalKey productKey = GlobalKey();
     return AppWidgetCartBottom(
       child: Scaffold(
         appBar: AppBar(
@@ -29,6 +30,7 @@ class ProductScreen extends StatelessWidget {
               Hero(
                 tag: '${product.id}-hero',
                 child: ClipRRect(
+                  key: productKey,
                   borderRadius: BorderRadius.circular(12.0),
                   child: CachedNetworkImage(
                     cacheKey: product.image,
@@ -37,6 +39,7 @@ class ProductScreen extends StatelessWidget {
                     height: 300,
                     width: 300,
                     placeholder: (context, url) => const SizedBox.shrink(),
+                    key: product.getGlobalKey('productScreen'),
                   ),
                 ),
               ),
@@ -55,11 +58,7 @@ class ProductScreen extends StatelessWidget {
                 width: MediaQuery.of(context).size.width * 0.8,
                 child: ElevatedButton(
                   onPressed: () async {
-                    AppWidgetCartBottom.of(context).show().then(
-                      (value) {
-                        AppWidgetCartBottom.of(context).hide();
-                      },
-                    );
+                    AppWidgetCartBottom.of(context).addToCart(product: product, tag: 'productScreen');
                   },
                   child: const Text('Add to cart'),
                 ),

@@ -60,6 +60,5 @@ class Product extends Equatable with GlobalKeyMixin {
         description,
         image,
         price,
-        globalKey,
       ];
 }
