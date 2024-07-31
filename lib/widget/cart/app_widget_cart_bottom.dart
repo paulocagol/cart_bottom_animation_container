@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
@@ -92,6 +93,10 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
         }
       });
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CartCubit>().loadCart();
+    });
   }
 
   @override
@@ -107,6 +112,14 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
   bool get isVisible => _currentExtent > 0.1;
 
   bool get isNotVisible => _currentExtent < 0.1;
+
+  Future<void> toggle() async {
+    if (isNotVisible) {
+      await show();
+    } else {
+      await hide();
+    }
+  }
 
   Future<void> show() async {
     _sheetController.animateTo(
@@ -129,7 +142,7 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
   Future<void> hide() async {
     while (_overlayEntries.isNotEmpty) {
       await _itemChangeController.stream.first;
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 300));
     }
 
     await _sheetController.animateTo(
@@ -155,6 +168,32 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
     }
   }
 
+  Future<void> addToCartMaintainedState({required Product product, required String tag}) async {
+    final oldIsVisible = isVisible;
+
+    if (isVisible) {
+      await addToCart(product: product, tag: tag);
+    } else {
+      await show();
+      await addToCart(product: product, tag: tag);
+
+      if (!oldIsVisible) {
+        await hide();
+      }
+    }
+  }
+
+  Future<void> addToCartWithOpenCart({required Product product, required String tag}) async {
+    if (isVisible) {
+      await addToCart(product: product, tag: tag);
+      await hide();
+    } else {
+      await show();
+      await addToCart(product: product, tag: tag);
+      await hide();
+    }
+  }
+
   //* Adiciona um produto ao carrinho com animação.
   Future<void> addToCart({required Product product, required String tag}) async {
     final cartCubit = context.read<CartCubit>();
@@ -164,13 +203,8 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
 
     final productContext = product.getGlobalKey(tag).currentContext;
     final cartContext = _cartKey.currentContext;
-
-    // final screenFrameContext = _getScreenFrameKey().currentContext;
     final screenFrameContext = context;
-    // final screenFrameContext = widget.masterKey.currentContext;
 
-    print('productContext: $productContext');
-    print('cartContext: $cartContext');
     if (productContext != null && cartContext != null) {
       RenderBox productRenderBox = productContext.findRenderObject() as RenderBox;
       final RenderBox deviceFrameRenderBox = screenFrameContext.findRenderObject() as RenderBox;
@@ -180,7 +214,6 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
       final RenderBox cartRenderBox = cartContext.findRenderObject() as RenderBox;
 
       if (cartCubit.containsProduct(product)) {
-        print('Product already in cart');
         var cartItem = _cartItemKeys[product]!;
 
         if (cartItem.currentContext == null) {
@@ -203,41 +236,30 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
 
         await _animateItemToCart(product, productRenderBox);
       } else {
-        // Move o scroll para o início antes de adicionar o item ao carrinho.
-        if (_scrollController.offset != 0) {
-          await _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-        }
-
-        _targetOffset = cartRenderBox.localToGlobal(Offset.zero, ancestor: deviceFrameRenderBox);
-
-        //? Adiciona o item à lista de itens animados
         _animatingItems.add(product);
-
         //? Adiciona o item à lista do carrinho.
-        final cartItemKey = await _addItemToCart(product);
+        _listKey.currentState?.insertItem(0, duration: const Duration(milliseconds: 300));
+        cartCubit.addProduct(product);
+        final GlobalKey cartItemKey = GlobalKey();
+        _cartItemKeys[product] = cartItemKey;
+        await Future.delayed(const Duration(milliseconds: 300));
 
-        await Future.delayed(const Duration(milliseconds: 600));
+        // Move o scroll para o início antes de adicionar o item ao carrinho.
+        if (cartCubit.state.cartItems.isNotEmpty) {
+          if (_scrollController.offset != 0) {
+            await _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+          }
+        }
 
         _targetOffset = (cartItemKey.currentContext?.findRenderObject() as RenderBox?)
                 ?.localToGlobal(Offset.zero, ancestor: deviceFrameRenderBox) ??
-            _targetOffset;
+            cartRenderBox.localToGlobal(Offset.zero, ancestor: deviceFrameRenderBox);
+
+        //? Adiciona o item à lista de itens animados
+
         await _animateItemToCart(product, productRenderBox);
       }
     }
-  }
-
-  void _addItem(Product product) => context.read<CartCubit>().addProduct(product);
-
-  void _removeItem(Product product) => context.read<CartCubit>().removeProduct(product);
-
-  //? Adiciona o item à lista do carrinho.
-  Future<GlobalKey<State<StatefulWidget>>> _addItemToCart(Product product) async {
-    final GlobalKey itemKey = GlobalKey();
-    _cartItemKeys[product] = itemKey;
-    _addItem(product);
-    _listKey.currentState?.insertItem(0, duration: const Duration(milliseconds: 300));
-    await Future.delayed(const Duration(milliseconds: 300));
-    return itemKey;
   }
 
   /// Anima a adição do item ao carrinho.
@@ -344,149 +366,171 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
         _currentExtent > maxProportionalExtent ? 50 * (_currentExtent - maxProportionalExtent) * 5 : 0.0;
 
     //* Material para o conteúdo da tela
-    return Material(
-      type: MaterialType.transparency,
-      child: Stack(
-        children: [
-          //* Conteúdo da tela
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(borderRadiusValue),
-                border: Border.all(
-                  color: Colors.grey.withOpacity(0.5),
-                  width: 2.0,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(shadowOpacity),
-                    blurRadius: 10,
-                    spreadRadius: 5,
-                    offset: const Offset(0, 5),
+    return BlocListener<CartCubit, CartState>(
+      listener: (context, state) {
+        if (state.status == CartStatus.loading) {
+          return;
+        }
+
+        if (state.status == CartStatus.empty) {
+          _cartItemKeys.clear();
+          return;
+        }
+
+        if (state.cartItems.isNotEmpty) {
+          _cartItemKeys.clear();
+          for (final product in state.cartItems) {
+            _cartItemKeys[product] = GlobalKey();
+          }
+        }
+      },
+      child: Material(
+        type: MaterialType.transparency,
+        child: Stack(
+          children: [
+            //* Conteúdo da tela
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(borderRadiusValue),
+                  border: Border.all(
+                    color: Colors.grey.withOpacity(0.5),
+                    width: 2.0,
                   ),
-                ],
-              ),
-              child: Transform.scale(
-                scale: scaleEffect, //? Ajusta a escala da tela de fundo
-                child: Transform.translate(
-                  offset: Offset(0, translateEffect), //? Ajusta a posição da tela de fundo
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(borderRadiusValue),
-                    child: widget.child,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(shadowOpacity),
+                      blurRadius: 10,
+                      spreadRadius: 5,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Transform.scale(
+                  scale: scaleEffect, //? Ajusta a escala da tela de fundo
+                  child: Transform.translate(
+                    offset: Offset(0, translateEffect), //? Ajusta a posição da tela de fundo
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(borderRadiusValue),
+                      child: widget.child,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: DraggableSheet(
-              controller: _sheetController,
-              minExtent: const Extent.proportional(minProportionalExtent),
-              maxExtent: const Extent.proportional(maxProportionalExtent),
-              initialExtent: const Extent.proportional(minProportionalExtent),
-              physics: BouncingSheetPhysics(
-                parent: SnappingSheetPhysics(
-                  snappingBehavior: SnapToNearest(
-                    snapTo: [
-                      const Extent.proportional(minProportionalExtent),
-                      const Extent.proportional(middleProportionalExtent),
-                      const Extent.proportional(maxProportionalExtent),
-                    ],
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: DraggableSheet(
+                controller: _sheetController,
+                minExtent: const Extent.proportional(minProportionalExtent),
+                maxExtent: const Extent.proportional(maxProportionalExtent),
+                initialExtent: const Extent.proportional(minProportionalExtent),
+                physics: BouncingSheetPhysics(
+                  parent: SnappingSheetPhysics(
+                    snappingBehavior: SnapToNearest(
+                      snapTo: [
+                        const Extent.proportional(minProportionalExtent),
+                        const Extent.proportional(middleProportionalExtent),
+                        const Extent.proportional(maxProportionalExtent),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              child: LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _currentExtent > maxProportionalExtent
-                          ? const SizedBox.shrink()
-                          : Container(
-                              height: 10,
-                              width: 100,
-                              decoration: const BoxDecoration(
-                                color: Colors.green,
-                                borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  topRight: Radius.circular(16),
+                child: LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _currentExtent > maxProportionalExtent
+                            ? const SizedBox.shrink()
+                            : Container(
+                                height: 10,
+                                width: 100,
+                                decoration: ShapeDecoration(
+                                  color: Theme.of(context).colorScheme.secondary,
+                                  shape: const RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(20),
+                                    topRight: Radius.circular(20),
+                                  )),
+                                ),
+                                child: Divider(
+                                  thickness: 2,
+                                  color: Colors.white.withOpacity(0.5),
+                                  height: 1,
+                                  indent: 20,
+                                  endIndent: 20,
                                 ),
                               ),
-                              child: Divider(
-                                thickness: 2,
-                                color: Colors.black.withOpacity(0.5),
-                                height: 1,
-                                indent: 20,
-                                endIndent: 20,
-                              ),
-                            ),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(16),
-                            topRight: Radius.circular(16),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(sheetShadowOpacity),
-                              blurRadius: 10,
-                              spreadRadius: 0.1,
-                              offset: const Offset(0, -2),
-                            ),
-                          ],
-                        ),
-                        child: SizedBox(
-                          height: constraints.maxHeight - 10,
-                          child: ClipRRect(
+                        Container(
+                          decoration: BoxDecoration(
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(16),
-                              bottomLeft: Radius.circular(16),
+                              topRight: Radius.circular(16),
                             ),
-                            child: Navigator(
-                              key: _navigatorKey,
-                              observers: [_heroController],
-                              onGenerateRoute: (RouteSettings settings) {
-                                return PageRouteBuilder(
-                                  transitionDuration:
-                                      const Duration(milliseconds: 1000), // Define a duração de transição
-                                  reverseTransitionDuration: const Duration(milliseconds: 1000),
-                                  barrierColor: Colors.green,
-                                  opaque: true,
-                                  settings: settings,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(sheetShadowOpacity),
+                                blurRadius: 10,
+                                spreadRadius: 0.1,
+                                offset: const Offset(0, -2),
+                              ),
+                            ],
+                          ),
+                          child: SizedBox(
+                            height: constraints.maxHeight - 10,
+                            child: ClipSmoothRect(
+                              radius: const SmoothBorderRadius.only(
+                                topLeft: SmoothRadius(
+                                  cornerRadius: 33,
+                                  cornerSmoothing: 1,
+                                ),
+                              ),
+                              child: Navigator(
+                                key: _navigatorKey,
+                                observers: [_heroController],
+                                onGenerateRoute: (RouteSettings settings) {
+                                  return PageRouteBuilder(
+                                    transitionDuration:
+                                        const Duration(milliseconds: 1000), // Define a duração de transição
+                                    reverseTransitionDuration: const Duration(milliseconds: 1000),
+                                    barrierColor: Theme.of(context).colorScheme.secondary,
+                                    opaque: true,
+                                    settings: settings,
 
-                                  pageBuilder: (context, animation, secondaryAnimation) {
-                                    if (settings.name == "/vertical") {
-                                      return _buildVerticalList();
-                                    }
-                                    return _buildHorizontalList();
-                                  },
-                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                    const begin = Offset(1.0, 0.0);
-                                    const end = Offset.zero;
-                                    const curve = Curves.fastOutSlowIn;
+                                    pageBuilder: (context, animation, secondaryAnimation) {
+                                      if (settings.name == "/vertical") {
+                                        return _buildVerticalList();
+                                      }
+                                      return _buildHorizontalList();
+                                    },
+                                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                      const begin = Offset(1.0, 0.0);
+                                      const end = Offset.zero;
+                                      const curve = Curves.fastOutSlowIn;
 
-                                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                                    var offsetAnimation = animation.drive(tween);
+                                      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                                      var offsetAnimation = animation.drive(tween);
 
-                                    return SlideTransition(
-                                      position: offsetAnimation,
-                                      child: child,
-                                    );
-                                  },
-                                );
-                              },
+                                      return SlideTransition(
+                                        position: offsetAnimation,
+                                        child: child,
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
-          )
-        ],
+            )
+          ],
+        ),
       ),
     );
   }
@@ -504,68 +548,78 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    height: _currentExtent > maxProportionalExtent ? 0 : 70,
-                    decoration: const BoxDecoration(
-                      color: Colors.brown,
-                      borderRadius: BorderRadius.only(topLeft: Radius.circular(16)),
-                    ),
-                    child: SizedBox(
-                      key: _cartKey,
-                      child: AnimatedList(
-                        padding: const EdgeInsets.only(
-                          top: 10,
-                          left: 10,
-                          right: 10,
-                          bottom: 10,
-                        ),
-                        key: _listKey,
-                        controller: _scrollController,
-                        scrollDirection: Axis.horizontal,
-                        initialItemCount: state.cartItems.length,
-                        itemBuilder: (context, index, animation) {
-                          final product = state.cartItems[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 10.0),
-                            child: SizeTransition(
-                              sizeFactor: animation,
-                              axis: Axis.horizontal,
-                              child: Opacity(
-                                // opacity: 1,
-                                opacity: _animatingItems.contains(product) ? 0 : 1,
-                                child: Hero(
-                                  tag: 'product_${product.id}',
-                                  child: ClipRRect(
-                                    key: _cartItemKeys[product],
-                                    borderRadius: BorderRadius.circular(12.0),
-                                    child: CachedNetworkImage(
-                                      cacheKey: product.image,
-                                      imageUrl: product.image,
-                                      fit: BoxFit.cover,
-                                      width: 50,
-                                      height: 50,
-                                      placeholder: (context, url) => const SizedBox.shrink(),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                      height: _currentExtent > maxProportionalExtent ? 0 : 70,
+                      width: constraints.maxWidth,
+                      padding: const EdgeInsets.all(10),
+                      decoration: const BoxDecoration(
+                        // color: Colors.brown,
+                        borderRadius: BorderRadius.only(topLeft: Radius.circular(16)),
                       ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.only(top: 10),
-                    alignment: Alignment.topCenter,
-                    color: Colors.red,
-                    height: constraints.maxHeight - 70,
-                    width: constraints.maxWidth,
-                    child: Text(
-                      'Total R\$ ${state.totalPrice.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                      child: SizedBox(
+                        key: _cartKey,
+                        height: double.infinity,
+                        width: double.infinity,
+                        // color: Colors.red,
+                        child: state.cartItems.isEmpty
+                            ? const SizedBox.shrink()
+                            : AnimatedList(
+                                key: _listKey,
+                                controller: _scrollController,
+                                scrollDirection: Axis.horizontal,
+                                initialItemCount: state.cartItems.length,
+                                itemBuilder: (context, index, animation) {
+                                  final product = state.cartItems[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 10.0),
+                                    child: SizeTransition(
+                                      sizeFactor: animation,
+                                      axis: Axis.horizontal,
+                                      child: Opacity(
+                                        // opacity: 1,
+                                        opacity: _animatingItems.contains(product) ? 0 : 1,
+                                        child: Hero(
+                                          tag: 'product_${product.id}',
+                                          child: ClipSmoothRect(
+                                            key: _cartItemKeys[product],
+                                            radius: const SmoothBorderRadius.all(
+                                              SmoothRadius(
+                                                cornerRadius: 18,
+                                                cornerSmoothing: 1,
+                                              ),
+                                            ),
+                                            child: CachedNetworkImage(
+                                              cacheKey: product.image,
+                                              imageUrl: product.image,
+                                              fit: BoxFit.cover,
+                                              width: 50,
+                                              height: 50,
+                                              placeholder: (context, url) => const SizedBox.shrink(),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                      )),
+                  GestureDetector(
+                    onTap: () {
+                      context.read<CartCubit>().clearCart();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.only(top: 10),
+                      alignment: Alignment.topCenter,
+                      // color: Colors.red,
+                      height: constraints.maxHeight - 70,
+                      width: constraints.maxWidth,
+                      child: Text(
+                        'Total R\$ ${state.totalPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   )
@@ -590,13 +644,20 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
             child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18.0),
                 height: 50,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    bottomLeft: Radius.circular(16),
-                  ),
-                ),
+                decoration: ShapeDecoration(
+                    color: Theme.of(context).colorScheme.secondaryFixedDim,
+                    shape: const SmoothRectangleBorder(
+                      borderRadius: SmoothBorderRadius.only(
+                        topLeft: SmoothRadius(
+                          cornerRadius: 22,
+                          cornerSmoothing: 1,
+                        ),
+                        bottomLeft: SmoothRadius(
+                          cornerRadius: 22,
+                          cornerSmoothing: 1,
+                        ),
+                      ),
+                    )),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -604,7 +665,7 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
                       'Produtos 10',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.white,
+                        color: Colors.black54,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -612,7 +673,7 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
                       'Total R\$ 750,00',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.white,
+                        color: Colors.black54,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -640,6 +701,10 @@ class AppWidgetCartBottomState extends State<AppWidgetCartBottom> with TickerPro
                     // height: MediaQuery.of(context).size.height,
                     child: BlocBuilder<CartCubit, CartState>(
                       builder: (context, state) {
+                        if (state.status == CartStatus.empty) {
+                          return const SizedBox.shrink();
+                        }
+
                         return AnimatedList(
                           primary: true,
                           shrinkWrap: true,

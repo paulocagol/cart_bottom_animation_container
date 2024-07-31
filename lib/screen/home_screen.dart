@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cart_bottom_animation_container/widget/cart/app_widget_cart_bottom.dart';
+import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/material.dart';
 
 import '../model/product.dart';
@@ -45,6 +46,12 @@ class _HomeScreenState extends State<HomeScreen> {
       key: _scaffoldKey,
       appBar: AppBar(
         title: const Text('Home'),
+        actions: [
+          IconButton(
+            onPressed: () => AppWidgetCartBottom.of(context).toggle(),
+            icon: const Icon(Icons.shopping_cart),
+          ),
+        ],
       ),
       body: GridView.builder(
         padding: const EdgeInsets.all(8.0),
@@ -58,21 +65,20 @@ class _HomeScreenState extends State<HomeScreen> {
         itemBuilder: (context, index) {
           final product = _listOfProducts[index];
           return GridTile(
-            footer: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12.0),
-                bottomRight: Radius.circular(12.0),
+            footer: ClipSmoothRect(
+              radius: const SmoothBorderRadius.only(
+                bottomLeft: SmoothRadius(
+                  cornerRadius: 22,
+                  cornerSmoothing: 1,
+                ),
+                bottomRight: SmoothRadius(
+                  cornerRadius: 22,
+                  cornerSmoothing: 1,
+                ),
               ),
               child: GestureDetector(
                 onTap: () async {
-                  if (AppWidgetCartBottom.of(context).isNotVisible) {
-                    if (context.mounted) await AppWidgetCartBottom.of(context).show();
-                  }
-
-                  if (context.mounted) {
-                    await AppWidgetCartBottom.of(context).addToCart(product: product, tag: 'homeScreen');
-                    // if (context.mounted) await AppWidgetCartBottom.of(context).hide();
-                  }
+                  AppWidgetCartBottom.of(context).addToCartMaintainedState(product: product, tag: 'homeScreen');
                 },
                 child: GridTileBar(
                   backgroundColor: Colors.black54,
@@ -87,8 +93,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ProductScreen.routeName,
                 arguments: product,
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12.0),
+              child: ClipSmoothRect(
+                radius: const SmoothBorderRadius.all(
+                  SmoothRadius(
+                    cornerRadius: 22,
+                    cornerSmoothing: 1,
+                  ),
+                ),
                 child: Hero(
                   tag: '${product.id}-hero',
                   child: CachedNetworkImage(

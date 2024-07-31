@@ -3,24 +3,36 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
 import '../../../model/product.dart';
+import '../../../repository/cart_repository.dart';
 
 part 'cart_state.dart';
 
 class CartCubit extends Cubit<CartState> {
-  CartCubit() : super(const CartState(cartItems: [], totalPrice: 0.0, cartItemKeys: {}));
+  final CartRepository _cartRepository;
+
+  CartCubit(this._cartRepository) : super(const CartState(cartItems: [], totalPrice: 0.0));
+
+  void loadCart() {
+    emit(state.copyWith(cartItems: [], totalPrice: 0.0, status: CartStatus.loading));
+    final products = _cartRepository.getProducts().reversed.toList();
+    final updatedCartItems = products;
+    final updatedTotalPrice = updatedCartItems.fold(0.0, (sum, item) => sum + item.price);
+    emit(state.copyWith(cartItems: updatedCartItems, totalPrice: updatedTotalPrice, status: CartStatus.loaded));
+    
+  }
 
   void addProduct(Product product) {
+    _cartRepository.addProduct(product);
     final updatedCartItems = List<Product>.from(state.cartItems)..insert(0, product);
-    final updatedCartItemKeys = Map<Product, GlobalKey>.from(state.cartItemKeys)..addAll({product: GlobalKey()});
     final updatedTotalPrice = updatedCartItems.fold(0.0, (sum, item) => sum + item.price);
-    emit(state.copyWith(cartItems: updatedCartItems, totalPrice: updatedTotalPrice, cartItemKeys: updatedCartItemKeys));
+    emit(state.copyWith(cartItems: updatedCartItems, totalPrice: updatedTotalPrice));
   }
 
   void removeProduct(Product product) {
+    _cartRepository.removeProduct(product);
     final updatedCartItems = List<Product>.from(state.cartItems)..remove(product);
-    final updatedCartItemKeys = Map<Product, GlobalKey>.from(state.cartItemKeys)..remove(product);
     final updatedTotalPrice = updatedCartItems.fold(0.0, (sum, item) => sum + item.price);
-    emit(state.copyWith(cartItems: updatedCartItems, totalPrice: updatedTotalPrice, cartItemKeys: updatedCartItemKeys));
+    emit(state.copyWith(cartItems: updatedCartItems, totalPrice: updatedTotalPrice));
   }
 
   bool isCartEmpty() => state.cartItems.isEmpty;
@@ -38,6 +50,7 @@ class CartCubit extends Cubit<CartState> {
   Product? getProductById(String id) => state.cartItems.firstWhere((product) => product.id == id);
 
   void clearCart() {
-    emit(const CartState(cartItems: [], totalPrice: 0.0, cartItemKeys: {}));
+    _cartRepository.clearCart();
+    emit(state.copyWith(cartItems: [], totalPrice: 0.0, status: CartStatus.empty));
   }
 }

@@ -1,25 +1,29 @@
 part of 'cart_cubit.dart';
 
+enum CartStatus { loading, loaded, empty }
+
+
 class CartState extends Equatable {
   final List<Product> cartItems;
-  final Map<Product, GlobalKey> cartItemKeys;
   final double totalPrice;
+  final CartStatus status;
 
   const CartState({
     required this.cartItems,
-    required this.cartItemKeys,
     required this.totalPrice,
+    this.status = CartStatus.empty,
   });
 
   CartState copyWith({
     List<Product>? cartItems,
     double? totalPrice,
     Map<Product, GlobalKey>? cartItemKeys,
+    CartStatus? status,
   }) {
     return CartState(
       cartItems: cartItems ?? this.cartItems,
-      cartItemKeys: cartItemKeys ?? this.cartItemKeys,
       totalPrice: totalPrice ?? this.totalPrice,
+      status: status ?? this.status,
     );
   }
 
@@ -27,6 +31,5 @@ class CartState extends Equatable {
   List<Object?> get props => [
         cartItems,
         totalPrice,
-        cartItemKeys,
       ];
 }

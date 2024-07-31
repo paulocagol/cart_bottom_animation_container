@@ -58,7 +58,7 @@ class ProductScreen extends StatelessWidget {
                 width: MediaQuery.of(context).size.width * 0.8,
                 child: ElevatedButton(
                   onPressed: () async {
-                    AppWidgetCartBottom.of(context).addToCart(product: product, tag: 'productScreen');
+                    AppWidgetCartBottom.of(context).addToCartMaintainedState(product: product, tag: 'productScreen');
                   },
                   child: const Text('Add to cart'),
                 ),
