@@ -16,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final List<Product> _listOfProducts = List.generate(
-      10,
+      50,
       (index) => Product(
             id: index.toString(),
             name: 'Product $index',
@@ -32,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
       AppWidgetCartBottom.of(context).show();
       // }
     });
+
     super.initState();
   }
 
@@ -78,7 +79,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: GestureDetector(
                 onTap: () async {
-                  AppWidgetCartBottom.of(context).addToCartMaintainedState(product: product, tag: 'homeScreen');
+                  await AppWidgetCartBottom.of(context).addItemToCart(
+                    product: product,
+                    tag: 'homeScreen',
+                  );
                 },
                 child: GridTileBar(
                   backgroundColor: Colors.black54,

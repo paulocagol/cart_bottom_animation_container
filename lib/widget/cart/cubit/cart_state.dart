@@ -2,7 +2,6 @@ part of 'cart_cubit.dart';
 
 enum CartStatus { loading, loaded, empty }
 
-
 class CartState extends Equatable {
   final List<Product> cartItems;
   final double totalPrice;
@@ -17,7 +16,6 @@ class CartState extends Equatable {
   CartState copyWith({
     List<Product>? cartItems,
     double? totalPrice,
-    Map<Product, GlobalKey>? cartItemKeys,
     CartStatus? status,
   }) {
     return CartState(
@@ -31,5 +29,6 @@ class CartState extends Equatable {
   List<Object?> get props => [
         cartItems,
         totalPrice,
+        status,
       ];
 }

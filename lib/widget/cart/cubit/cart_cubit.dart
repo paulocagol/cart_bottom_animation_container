@@ -1,6 +1,5 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/material.dart';
 
 import '../../../model/product.dart';
 import '../../../repository/cart_repository.dart';
@@ -18,7 +17,6 @@ class CartCubit extends Cubit<CartState> {
     final updatedCartItems = products;
     final updatedTotalPrice = updatedCartItems.fold(0.0, (sum, item) => sum + item.price);
     emit(state.copyWith(cartItems: updatedCartItems, totalPrice: updatedTotalPrice, status: CartStatus.loaded));
-    
   }
 
   void addProduct(Product product) {
@@ -49,8 +47,8 @@ class CartCubit extends Cubit<CartState> {
 
   Product? getProductById(String id) => state.cartItems.firstWhere((product) => product.id == id);
 
-  void clearCart() {
-    _cartRepository.clearCart();
+  Future<void> clearCart() async {
+    await _cartRepository.clearCart();
     emit(state.copyWith(cartItems: [], totalPrice: 0.0, status: CartStatus.empty));
   }
 }

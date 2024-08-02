@@ -17,6 +17,8 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(ProductAdapter());
   var cartBox = await Hive.openBox<Product>('cartBox');
+
+  // await cartBox.clear();
   runApp(DevicePreview(
     enabled: true,
     builder: (context) => App(cartBox: cartBox),
