@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cart_bottom_animation_container/widget/cart/app_widget_cart_bottom.dart';
 import 'package:flutter/material.dart';
 
 import '../model/product.dart';
+import '../widget/cart/app_widget_cart_bottom.dart';
 
 class ProductScreen extends StatelessWidget {
   static const routeName = '/product';
@@ -57,9 +57,7 @@ class ProductScreen extends StatelessWidget {
               SizedBox(
                 width: MediaQuery.of(context).size.width * 0.8,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    AppWidgetCartBottom.of(context).addItemToCart(product: product, tag: 'productScreen');
-                  },
+                  onPressed: () {},
                   child: const Text('Add to cart'),
                 ),
               )

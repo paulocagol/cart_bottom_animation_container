@@ -1,34 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
-import '../controller/app_widget_cart_bottom_controller.dart';
+import '../bloc/cart_widget_bloc.dart';
 import 'widget_horizontal_list_cart.dart';
 import 'widget_vertical_list_cart.dart';
 
 class WidgetDraggableSheet extends StatelessWidget {
-  final AppWidgetCartBottomController controller;
-
-  const WidgetDraggableSheet({
-    super.key,
-    required this.controller,
-  });
+  const WidgetDraggableSheet({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.bottomCenter,
       child: DraggableSheet(
-        controller: controller.sheetController,
-        minExtent: Extent.proportional(controller.minProportionalExtent),
-        maxExtent: Extent.proportional(controller.maxProportionalExtent),
-        initialExtent: Extent.proportional(controller.minProportionalExtent),
+        controller: context.read<CartWidgetBloc>().controller.sheetController,
+        minExtent: Extent.proportional(context.read<CartWidgetBloc>().controller.minProportionalExtent),
+        maxExtent: Extent.proportional(context.read<CartWidgetBloc>().controller.maxProportionalExtent),
+        initialExtent: Extent.proportional(context.read<CartWidgetBloc>().controller.minProportionalExtent),
         physics: BouncingSheetPhysics(
           parent: SnappingSheetPhysics(
             snappingBehavior: SnapToNearest(
               snapTo: [
-                Extent.proportional(controller.minProportionalExtent),
-                Extent.proportional(controller.middleProportionalExtent),
-                Extent.proportional(controller.maxProportionalExtent),
+                Extent.proportional(context.read<CartWidgetBloc>().controller.minProportionalExtent),
+                Extent.proportional(context.read<CartWidgetBloc>().controller.middleProportionalExtent),
+                Extent.proportional(context.read<CartWidgetBloc>().controller.maxProportionalExtent),
               ],
             ),
           ),
@@ -38,7 +34,8 @@ class WidgetDraggableSheet extends StatelessWidget {
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (controller.currentExtent <= controller.maxProportionalExtent)
+                if (context.read<CartWidgetBloc>().controller.currentExtent <=
+                    context.read<CartWidgetBloc>().controller.maxProportionalExtent)
                   Container(
                     height: 10,
                     width: 100,
@@ -67,7 +64,8 @@ class WidgetDraggableSheet extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2 + (0.3 * controller.currentExtent)),
+                        color: Colors.black
+                            .withOpacity(0.2 + (0.3 * context.read<CartWidgetBloc>().controller.currentExtent)),
                         blurRadius: 10,
                         spreadRadius: 0.1,
                         offset: const Offset(0, -2),
@@ -79,8 +77,8 @@ class WidgetDraggableSheet extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: const BorderRadius.only(topLeft: Radius.circular(33)),
                       child: Navigator(
-                        key: controller.navigatorKey,
-                        observers: [controller.heroController],
+                        key: context.read<CartWidgetBloc>().controller.navigatorKey,
+                        observers: [context.read<CartWidgetBloc>().controller.heroController],
                         onGenerateRoute: (RouteSettings settings) {
                           return PageRouteBuilder(
                             transitionDuration: const Duration(milliseconds: 800),
@@ -90,12 +88,9 @@ class WidgetDraggableSheet extends StatelessWidget {
                             settings: settings,
                             pageBuilder: (context, animation, secondaryAnimation) {
                               if (settings.name == "/vertical") {
-                                return WidgetVerticalListCart(
-                                  cartItemKeys: controller.cartItemKeys,
-                                  scrollController: controller.scrollController,
-                                );
+                                return WidgetVerticalListCart();
                               }
-                              return WidgetHorizontalListCart(controller: controller);
+                              return const WidgetHorizontalListCart();
                             },
                             transitionsBuilder: (context, animation, secondaryAnimation, child) {
                               const begin = Offset(1.0, 0.0);

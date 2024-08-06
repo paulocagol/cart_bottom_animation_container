@@ -3,17 +3,10 @@ import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../app_widget_cart_bottom.dart';
-import '../controller/app_widget_cart_bottom_controller.dart';
-import '../cubit/cart_cubit.dart';
+import '../bloc/cart_widget_bloc.dart';
 
 class WidgetHorizontalListCart extends StatelessWidget {
-  final AppWidgetCartBottomController controller;
-
-  const WidgetHorizontalListCart({
-    super.key,
-    required this.controller,
-  });
+  const WidgetHorizontalListCart({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,44 +14,57 @@ class WidgetHorizontalListCart extends StatelessWidget {
       top: false,
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          return BlocConsumer<CartCubit, CartState>(
-            listener: (context, state) {},
+          return BlocBuilder<CartWidgetBloc, CartWidgetState>(
             builder: (context, state) {
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    height: 70,
-                    width: constraints.maxWidth,
-                    decoration: const BoxDecoration(borderRadius: BorderRadius.only(topLeft: Radius.circular(16))),
-                    child: SizedBox(
-                      key: controller.cartKey,
-                      height: double.infinity,
-                      width: double.infinity,
-                      child: AnimatedList(
-                        padding: const EdgeInsets.only(left: 10, top: 10, bottom: 10),
-                        key: controller.listKey,
-                        controller: controller.scrollController,
-                        scrollDirection: Axis.horizontal,
-                        initialItemCount: state.cartItems.length,
-                        itemBuilder: (context, index, animation) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 10.0),
-                            child: SizeTransition(
-                              sizeFactor: animation,
-                              axis: Axis.horizontal,
-                              child: GestureDetector(
-                                onLongPress: () {
-                                  AppWidgetCartBottom.of(context).removeItemFromCart(product: state.cartItems[index]);
-                                },
+              // final visibilityState = state.visibilityState;
+              // final animationState = state.animationState;
+              final operationState = state.operationState;
+
+              if (operationState is CartWidgetLoadingState) {
+                return const CircularProgressIndicator.adaptive();
+              }
+
+              if (operationState is CartWidgetErrorState) {
+                return Text('Erro ao carregar o carrinho ${operationState.error}');
+              }
+
+              if (operationState is CartWidgetLoadedState) {
+                print('items ${operationState.items}');
+
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      height: 70,
+                      width: constraints.maxWidth,
+                      decoration: const BoxDecoration(borderRadius: BorderRadius.only(topLeft: Radius.circular(16))),
+                      child: SizedBox(
+                        key: context.read<CartWidgetBloc>().controller.cartKey,
+                        height: double.infinity,
+                        width: double.infinity,
+                        child: AnimatedList(
+                          padding: const EdgeInsets.only(left: 10, top: 10, bottom: 10),
+                          key: context.read<CartWidgetBloc>().controller.listKey,
+                          controller: context.read<CartWidgetBloc>().controller.scrollController,
+                          scrollDirection: Axis.horizontal,
+                          initialItemCount: operationState.items.length,
+                          itemBuilder: (context, index, animation) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 10.0),
+                              child: SizeTransition(
+                                sizeFactor: animation,
+                                axis: Axis.horizontal,
                                 child: Opacity(
                                   opacity: 1,
-                                  // opacity: animatingItems.contains(product) ? 0 : 1,
+                                  // opacity: controller.animatingItems.contains(state.cartItems[index]) ? 0 : 1,
                                   child: Hero(
-                                    tag: 'product_${state.cartItems[index].id}',
+                                    tag: 'product_${operationState.items[index].product.id}',
                                     child: ClipSmoothRect(
-                                      key: controller.cartItemKeys[state.cartItems[index]],
+                                      key: context
+                                          .read<CartWidgetBloc>()
+                                          .controller
+                                          .cartItemKeys[operationState.items[index].product],
                                       radius: const SmoothBorderRadius.all(
                                         SmoothRadius(
                                           cornerRadius: 18,
@@ -66,8 +72,8 @@ class WidgetHorizontalListCart extends StatelessWidget {
                                         ),
                                       ),
                                       child: CachedNetworkImage(
-                                        cacheKey: state.cartItems[index].image,
-                                        imageUrl: state.cartItems[index].image,
+                                        cacheKey: operationState.items[index].product.image,
+                                        imageUrl: operationState.items[index].product.image,
                                         fit: BoxFit.cover,
                                         width: 50,
                                         height: 50,
@@ -77,53 +83,30 @@ class WidgetHorizontalListCart extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      for (int i = state.cartItems.length - 1; i >= 0; i--) {
-                        controller.listKey.currentState?.removeItem(
-                          i,
-                          (context, animation) => SizeTransition(
-                            sizeFactor: animation,
-                            axis: Axis.horizontal,
-                            child: Container(
-                              padding: const EdgeInsets.all(16.0),
-                              margin: const EdgeInsets.symmetric(vertical: 8.0),
-                              color: Colors.redAccent,
-                              child: const Text(
-                                'Removing...',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ),
-                          duration: const Duration(milliseconds: 300),
-                        );
-                        controller.cartItemKeys.remove(state.cartItems[i]);
-                      }
-                      context.read<CartCubit>().clearCart();
-                    },
-                    child: Container(
+                    Container(
                       padding: const EdgeInsets.only(top: 10),
                       alignment: Alignment.topCenter,
                       height: constraints.maxHeight - 70,
                       width: constraints.maxWidth,
-                      child: Text(
-                        'Total R\$ ${state.totalPrice.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                      child: const Text(
+                        'Total R\$ 100',
+                        style: TextStyle(
                           fontSize: 16,
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  ),
-                ],
-              );
+                  ],
+                );
+              }
+
+              return const SizedBox.shrink();
             },
           );
         },

@@ -2,18 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../model/product.dart';
-import '../cubit/cart_cubit.dart';
+import '../bloc/cart_widget_bloc.dart';
 
 class WidgetVerticalListCart extends StatelessWidget {
-  final Map<Product, GlobalKey> cartItemKeys;
-  final ScrollController scrollController;
-
-  const WidgetVerticalListCart({
-    super.key,
-    required this.cartItemKeys,
-    required this.scrollController,
-  });
+  const WidgetVerticalListCart({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -78,46 +70,59 @@ class WidgetVerticalListCart extends StatelessWidget {
                   right: 0,
                   bottom: 0,
                   child: SizedBox(
-                    child: BlocBuilder<CartCubit, CartState>(
+                    child: BlocBuilder<CartWidgetBloc, CartWidgetState>(
                       builder: (context, state) {
-                        if (state.status == CartStatus.empty) {
-                          return const SizedBox.shrink();
+                        // final visibilityState = state.visibilityState;
+                        // final animationState = state.animationState;
+                        final operationState = state.operationState;
+
+                        if (operationState is CartWidgetLoadingState) {
+                          return const CircularProgressIndicator.adaptive();
                         }
-                        return AnimatedList(
-                          controller: scrollController,
-                          initialItemCount: state.cartItems.length,
-                          itemBuilder: (context, index, animation) {
-                            final product = state.cartItems[index];
-                            return Container(
-                              height: 80,
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Hero(
-                                    tag: 'product_${product.id}',
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: CachedNetworkImage(
-                                        cacheKey: product.image,
-                                        imageUrl: product.image,
-                                        fit: BoxFit.cover,
-                                        width: 80,
-                                        height: 80,
-                                        placeholder: (context, url) => const SizedBox.shrink(),
+
+                        if (operationState is CartWidgetErrorState) {
+                          return Text('Erro ao carregar o carrinho ${operationState.error}');
+                        }
+
+                        if (operationState is CartWidgetLoadedState) {
+                          return AnimatedList(
+                            controller: context.read<CartWidgetBloc>().controller.scrollController,
+                            initialItemCount: operationState.items.length,
+                            itemBuilder: (context, index, animation) {
+                              final item = operationState.items[index];
+                              return Container(
+                                height: 80,
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Hero(
+                                      tag: 'product_${item.product.id}',
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: CachedNetworkImage(
+                                          cacheKey: item.product.image,
+                                          imageUrl: item.product.image,
+                                          fit: BoxFit.cover,
+                                          width: 80,
+                                          height: 80,
+                                          placeholder: (context, url) => const SizedBox.shrink(),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Produto ${product.id}',
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        );
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Produto ${item.product.id}',
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        }
+
+                        return const SizedBox.shrink();
                       },
                     ),
                   ),

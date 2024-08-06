@@ -1,9 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cart_bottom_animation_container/widget/cart/app_widget_cart_bottom.dart';
 import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../model/product.dart';
+import '../widget/cart/bloc/cart_widget_bloc.dart';
 import 'product_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,7 +14,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final List<Product> _listOfProducts = List.generate(
       50,
@@ -28,17 +29,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // if (AppWidgetCartBottom.of(context).isNotVisible) {
-      AppWidgetCartBottom.of(context).show();
-      // }
+      context.read<CartWidgetBloc>().add(CartWidgetShowEvent());
     });
 
     super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   @override
@@ -49,7 +43,9 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Home'),
         actions: [
           IconButton(
-            onPressed: () => AppWidgetCartBottom.of(context).toggle(),
+            onPressed: () {
+              context.read<CartWidgetBloc>().add(CartWidgetToggleEvent());
+            },
             icon: const Icon(Icons.shopping_cart),
           ),
         ],
@@ -78,11 +74,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               child: GestureDetector(
-                onTap: () async {
-                  await AppWidgetCartBottom.of(context).addItemToCart(
-                    product: product,
-                    tag: 'homeScreen',
-                  );
+                onTap: () {
+                  context.read<CartWidgetBloc>().add(CartWidgetAddEvent(
+                        product: product,
+                        quantity: 1,
+                        vsync: this,
+                        tag: 'homeScreen',
+                      ));
                 },
                 child: GridTileBar(
                   backgroundColor: Colors.black54,

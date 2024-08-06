@@ -1,33 +1,34 @@
 import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../controller/app_widget_cart_bottom_controller.dart';
+import '../bloc/cart_widget_bloc.dart';
 
 class WidgetBackgroundContainer extends StatelessWidget {
   final Widget child;
-  final AppWidgetCartBottomController controller;
 
   const WidgetBackgroundContainer({
     super.key,
     required this.child,
-    required this.controller,
   });
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<double>(
-      valueListenable: controller.currentExtentNotifier,
+      valueListenable: context.read<CartWidgetBloc>().controller.valueNotifierCurrentExtent,
       builder: (context, currentExtent, child) {
         double borderRadiusValue = 16 * currentExtent;
 
         double shadowOpacity = 0.2 + (0.3 * currentExtent);
 
-        double scaleEffect = currentExtent > controller.maxProportionalExtent
-            ? 1.0 - (0.1 * (currentExtent - controller.maxProportionalExtent) * 5).clamp(0.0, 0.1)
+        double scaleEffect = currentExtent > context.read<CartWidgetBloc>().controller.maxProportionalExtent
+            ? 1.0 -
+                (0.1 * (currentExtent - context.read<CartWidgetBloc>().controller.maxProportionalExtent) * 5)
+                    .clamp(0.0, 0.1)
             : 1.0;
 
-        double translateEffect = currentExtent > controller.maxProportionalExtent
-            ? 50 * (currentExtent - controller.maxProportionalExtent) * 5
+        double translateEffect = currentExtent > context.read<CartWidgetBloc>().controller.maxProportionalExtent
+            ? 50 * (currentExtent - context.read<CartWidgetBloc>().controller.maxProportionalExtent) * 5
             : 0.0;
 
         return Positioned.fill(

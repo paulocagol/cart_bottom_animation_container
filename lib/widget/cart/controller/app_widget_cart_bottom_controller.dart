@@ -3,15 +3,13 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
+import '../../../model/cart_item.dart';
 import '../../../model/product.dart';
-import '../cubit/cart_cubit.dart';
 
 class AppWidgetCartBottomController {
   final BuildContext context;
-  final TickerProvider vsync;
 
   final double minProportionalExtent = 0.0;
   final double middleProportionalExtent = 0.17;
@@ -33,16 +31,16 @@ class AppWidgetCartBottomController {
   Offset imageOffset = Offset.zero;
   Offset targetOffset = Offset.zero;
 
-  ValueNotifier<double> currentExtentNotifier = ValueNotifier(0.2);
-  double get currentExtent => currentExtentNotifier.value;
+  ValueNotifier<double> valueNotifierCurrentExtent = ValueNotifier(0.2);
+  double get currentExtent => valueNotifierCurrentExtent.value;
   // double currentExtent = 0.2;
 
-  AppWidgetCartBottomController({required this.context, required this.vsync})
+  AppWidgetCartBottomController(this.context)
       : heroController =
             HeroController(createRectTween: (Rect? begin, Rect? end) => MaterialRectArcTween(begin: begin, end: end)) {
     sheetController.addListener(() {
       final metrics = sheetController.value;
-      currentExtentNotifier.value = metrics.pixels / metrics.maxPixels;
+      valueNotifierCurrentExtent.value = metrics.pixels / metrics.maxPixels;
 
       if (currentExtent > 0.4) {
         if (!_isVerticalListRouteActive()) {
@@ -106,47 +104,12 @@ class AppWidgetCartBottomController {
     }
   }
 
-  Future<void> removeItemFromCart({required Product product}) async {
-    final cartCubit = context.read<CartCubit>();
-
-    listKey.currentState?.removeItem(
-      cartCubit.getIndexOfProduct(product),
-      (context, animation) => FadeTransition(
-        opacity: animation,
-        child: ScaleTransition(
-          scale: animation,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 10.0),
-            child: ClipSmoothRect(
-              radius: const SmoothBorderRadius.all(
-                SmoothRadius(
-                  cornerRadius: 18,
-                  cornerSmoothing: 1,
-                ),
-              ),
-              child: CachedNetworkImage(
-                cacheKey: product.image,
-                imageUrl: product.image,
-                fit: BoxFit.cover,
-                width: 50,
-                height: 50,
-                placeholder: (context, url) => const SizedBox.shrink(),
-              ),
-            ),
-          ),
-        ),
-      ),
-      duration: const Duration(milliseconds: 1300),
-    );
-
-    if (cartCubit.containsProduct(product)) {
-      cartCubit.removeProduct(product);
-    }
-  }
-
-  Future<void> addItemToCart({required Product product, required String tag}) async {
-    final cartCubit = context.read<CartCubit>();
-
+  Future<void> addItemToCart({
+    required TickerProvider vsync,
+    required List<CartItem> cartItems,
+    required Product product,
+    required String tag,
+  }) async {
     if (animatingItems.contains(product)) return;
 
     final productContext = product.getGlobalKey(tag).currentContext;
@@ -160,11 +123,11 @@ class AppWidgetCartBottomController {
       imageOffset = productRenderBox.localToGlobal(Offset.zero, ancestor: deviceFrameRenderBox);
       final RenderBox cartRenderBox = cartContext.findRenderObject() as RenderBox;
 
-      if (cartCubit.containsProduct(product)) {
+      if (cartItems.any((element) => element.product == product)) {
         var cartItem = cartItemKeys[product]!;
 
         if (cartItem.currentContext == null) {
-          final itemIndex = cartCubit.getIndexOfProduct(product);
+          final itemIndex = cartItems.indexWhere((element) => element.product == product);
           final targetPosition = (itemIndex * 50.0).clamp(0.0, scrollController.position.maxScrollExtent);
           await scrollController.animateTo(targetPosition,
               duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
@@ -177,9 +140,9 @@ class AppWidgetCartBottomController {
                 ?.localToGlobal(Offset.zero, ancestor: deviceFrameRenderBox) ??
             targetOffset;
 
-        await _animateItemToCart(product, productRenderBox);
+        await _animateItemToCart(vsync, product, productRenderBox);
       } else {
-        if (cartCubit.state.cartItems.isNotEmpty) {
+        if (cartItems.isNotEmpty) {
           if (scrollController.offset != 0) {
             await scrollController.animateTo(
               0,
@@ -188,16 +151,16 @@ class AppWidgetCartBottomController {
             );
           }
         }
-        cartCubit.addProduct(product);
         cartItemKeys[product] = GlobalKey();
         animatingItems.add(product);
+
         listKey.currentState?.insertItem(0, duration: const Duration(milliseconds: 300));
         await Future.delayed(const Duration(milliseconds: 310));
 
         targetOffset = cartRenderBox.localToGlobal(Offset.zero, ancestor: deviceFrameRenderBox);
         targetOffset = (targetOffset + const Offset(10.0, 10.0));
 
-        await _animateItemToCart(product, productRenderBox);
+        await _animateItemToCart(vsync, product, productRenderBox);
       }
     }
   }
@@ -213,7 +176,11 @@ class AppWidgetCartBottomController {
     }
   }
 
-  Future<void> _animateItemToCart(Product product, RenderBox productRenderBox) async {
+  Future<void> _animateItemToCart(
+    TickerProvider vsync,
+    Product product,
+    RenderBox productRenderBox,
+  ) async {
     final controller = AnimationController(duration: const Duration(milliseconds: 2300), vsync: vsync);
 
     final offsetAnimation = Tween<Offset>(begin: imageOffset, end: targetOffset)
@@ -274,19 +241,12 @@ class AppWidgetCartBottomController {
     await controller.forward();
   }
 
-  void updateCartItemKeys(CartState state) {
-    if (state.status == CartStatus.loading) {
-      return;
-    }
+  void updateCartItemKeys(List<CartItem> cartItems) {
+    if (cartItems.isEmpty) return;
 
     cartItemKeys.clear();
-
-    if (state.status == CartStatus.empty || state.cartItems.isEmpty) {
-      return;
-    }
-
-    for (final product in state.cartItems) {
-      cartItemKeys[product] = GlobalKey();
+    for (final item in cartItems) {
+      cartItemKeys[item.product] = GlobalKey();
     }
   }
 }

@@ -1,21 +1,22 @@
 import 'package:hive/hive.dart';
 
-import '../model/product.dart';
+import '../model/cart_item.dart';
 
 class CartRepository {
-  final Box<Product> _cartBox;
+  final Box<CartItem> _cartBox;
 
   CartRepository(this._cartBox);
 
-  Future<void> addProduct(Product product) async {
-    await _cartBox.put(product.id, product);
+  Future<List<CartItem>> addCartItem(CartItem cart) async {
+    await _cartBox.put(cart.id, cart);
+    return _cartBox.values.toList();
   }
 
-  Future<void> removeProduct(Product product) async {
-    await _cartBox.delete(product.id);
+  Future<void> removeCartItem(CartItem cart) async {
+    await _cartBox.delete(cart.id);
   }
 
-  List<Product> getProducts() {
+  List<CartItem> getProducts() {
     return _cartBox.values.toList();
   }
 
