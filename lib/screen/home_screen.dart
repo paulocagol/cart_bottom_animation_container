@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:figma_squircle/figma_squircle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 
 import '../model/product.dart';
 import '../widget/cart/bloc/cart_widget_bloc.dart';
@@ -19,11 +22,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final List<Product> _listOfProducts = List.generate(
       50,
       (index) => Product(
-            id: index.toString(),
+            id: const Uuid().v4(),
             name: 'Product $index',
             description: 'Description of product $index',
             image: 'https://picsum.photos/200/300?random=$index',
-            price: index.toDouble(),
+            price: Random().nextDouble() * 100,
           ));
 
   @override
@@ -85,6 +88,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: GridTileBar(
                   backgroundColor: Colors.black54,
                   title: Text(product.name),
+                  subtitle: Text('R\$ ${product.price.toStringAsFixed(2)}'),
                   trailing: const Icon(Icons.add_shopping_cart),
                 ),
               ),

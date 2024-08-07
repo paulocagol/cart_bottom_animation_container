@@ -14,17 +14,17 @@ class WidgetDraggableSheet extends StatelessWidget {
     return Align(
       alignment: Alignment.bottomCenter,
       child: DraggableSheet(
-        controller: context.read<CartWidgetBloc>().controller.sheetController,
-        minExtent: Extent.proportional(context.read<CartWidgetBloc>().controller.minProportionalExtent),
-        maxExtent: Extent.proportional(context.read<CartWidgetBloc>().controller.maxProportionalExtent),
-        initialExtent: Extent.proportional(context.read<CartWidgetBloc>().controller.minProportionalExtent),
+        controller: context.read<CartWidgetBloc>().screenController.sheetController,
+        minExtent: Extent.proportional(context.read<CartWidgetBloc>().screenController.minProportionalExtent),
+        maxExtent: Extent.proportional(context.read<CartWidgetBloc>().screenController.maxProportionalExtent),
+        initialExtent: Extent.proportional(context.read<CartWidgetBloc>().screenController.minProportionalExtent),
         physics: BouncingSheetPhysics(
           parent: SnappingSheetPhysics(
             snappingBehavior: SnapToNearest(
               snapTo: [
-                Extent.proportional(context.read<CartWidgetBloc>().controller.minProportionalExtent),
-                Extent.proportional(context.read<CartWidgetBloc>().controller.middleProportionalExtent),
-                Extent.proportional(context.read<CartWidgetBloc>().controller.maxProportionalExtent),
+                Extent.proportional(context.read<CartWidgetBloc>().screenController.minProportionalExtent),
+                Extent.proportional(context.read<CartWidgetBloc>().screenController.middleProportionalExtent),
+                Extent.proportional(context.read<CartWidgetBloc>().screenController.maxProportionalExtent),
               ],
             ),
           ),
@@ -34,8 +34,8 @@ class WidgetDraggableSheet extends StatelessWidget {
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (context.read<CartWidgetBloc>().controller.currentExtent <=
-                    context.read<CartWidgetBloc>().controller.maxProportionalExtent)
+                if (context.read<CartWidgetBloc>().screenController.currentExtent <=
+                    context.read<CartWidgetBloc>().screenController.maxProportionalExtent)
                   Container(
                     height: 10,
                     width: 100,
@@ -65,7 +65,7 @@ class WidgetDraggableSheet extends StatelessWidget {
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black
-                            .withOpacity(0.2 + (0.3 * context.read<CartWidgetBloc>().controller.currentExtent)),
+                            .withOpacity(0.2 + (0.3 * context.read<CartWidgetBloc>().screenController.currentExtent)),
                         blurRadius: 10,
                         spreadRadius: 0.1,
                         offset: const Offset(0, -2),
@@ -77,8 +77,8 @@ class WidgetDraggableSheet extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: const BorderRadius.only(topLeft: Radius.circular(33)),
                       child: Navigator(
-                        key: context.read<CartWidgetBloc>().controller.navigatorKey,
-                        observers: [context.read<CartWidgetBloc>().controller.heroController],
+                        key: context.read<CartWidgetBloc>().screenController.navigatorKey,
+                        observers: [context.read<CartWidgetBloc>().screenController.heroController],
                         onGenerateRoute: (RouteSettings settings) {
                           return PageRouteBuilder(
                             transitionDuration: const Duration(milliseconds: 800),
@@ -88,7 +88,7 @@ class WidgetDraggableSheet extends StatelessWidget {
                             settings: settings,
                             pageBuilder: (context, animation, secondaryAnimation) {
                               if (settings.name == "/vertical") {
-                                return WidgetVerticalListCart();
+                                return const WidgetVerticalListCart();
                               }
                               return const WidgetHorizontalListCart();
                             },

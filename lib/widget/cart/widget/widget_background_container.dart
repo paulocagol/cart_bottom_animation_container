@@ -15,20 +15,20 @@ class WidgetBackgroundContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<double>(
-      valueListenable: context.read<CartWidgetBloc>().controller.valueNotifierCurrentExtent,
+      valueListenable: context.read<CartWidgetBloc>().screenController.valueNotifierCurrentExtent,
       builder: (context, currentExtent, child) {
         double borderRadiusValue = 16 * currentExtent;
 
         double shadowOpacity = 0.2 + (0.3 * currentExtent);
 
-        double scaleEffect = currentExtent > context.read<CartWidgetBloc>().controller.maxProportionalExtent
+        double scaleEffect = currentExtent > context.read<CartWidgetBloc>().screenController.maxProportionalExtent
             ? 1.0 -
-                (0.1 * (currentExtent - context.read<CartWidgetBloc>().controller.maxProportionalExtent) * 5)
+                (0.1 * (currentExtent - context.read<CartWidgetBloc>().screenController.maxProportionalExtent) * 5)
                     .clamp(0.0, 0.1)
             : 1.0;
 
-        double translateEffect = currentExtent > context.read<CartWidgetBloc>().controller.maxProportionalExtent
-            ? 50 * (currentExtent - context.read<CartWidgetBloc>().controller.maxProportionalExtent) * 5
+        double translateEffect = currentExtent > context.read<CartWidgetBloc>().screenController.maxProportionalExtent
+            ? 50 * (currentExtent - context.read<CartWidgetBloc>().screenController.maxProportionalExtent) * 5
             : 0.0;
 
         return Positioned.fill(

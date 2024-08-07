@@ -9,6 +9,7 @@ environment:
 dependencies:
   bloc: ^8.1.4
   cached_network_image: ^3.3.1
+  collection: ^1.18.0
   device_preview: ^1.2.0
   equatable: ^2.0.5
   figma_squircle: ^0.5.3
@@ -19,6 +20,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   smooth_sheets: ^0.9.0
+  uuid: ^4.4.2
 
 dev_dependencies:
   flutter_test:

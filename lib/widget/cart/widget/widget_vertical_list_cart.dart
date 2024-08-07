@@ -80,13 +80,13 @@ class WidgetVerticalListCart extends StatelessWidget {
                           return const CircularProgressIndicator.adaptive();
                         }
 
-                        if (operationState is CartWidgetErrorState) {
-                          return Text('Erro ao carregar o carrinho ${operationState.error}');
-                        }
+                        // if (operationState is CartWidgetErrorState) {
+                        //   return Text('Erro ao carregar o carrinho ${operationState.error}');
+                        // }
 
                         if (operationState is CartWidgetLoadedState) {
                           return AnimatedList(
-                            controller: context.read<CartWidgetBloc>().controller.scrollController,
+                            controller: context.read<CartWidgetBloc>().screenController.scrollController,
                             initialItemCount: operationState.items.length,
                             itemBuilder: (context, index, animation) {
                               final item = operationState.items[index];

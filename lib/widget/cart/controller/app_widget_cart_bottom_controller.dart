@@ -242,11 +242,20 @@ class AppWidgetCartBottomController {
   }
 
   void updateCartItemKeys(List<CartItem> cartItems) {
+    cartItemKeys.clear();
+    listKey.currentState?.removeAllItems(
+      (context, animation) => const SizedBox.shrink(),
+      duration: const Duration(milliseconds: 0),
+    );
+
     if (cartItems.isEmpty) return;
 
-    cartItemKeys.clear();
     for (final item in cartItems) {
       cartItemKeys[item.product] = GlobalKey();
+      listKey.currentState?.insertItem(
+        cartItems.indexOf(item),
+        duration: const Duration(milliseconds: 0),
+      );
     }
   }
 }

@@ -14,7 +14,19 @@ class WidgetHorizontalListCart extends StatelessWidget {
       top: false,
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          return BlocBuilder<CartWidgetBloc, CartWidgetState>(
+          return BlocConsumer<CartWidgetBloc, CartWidgetState>(
+            listener: (context, state) {
+              // final visibilityState = state.visibilityState;
+              // final animationState = state.animationState;
+              final statusState = state.statusState;
+
+              if (statusState is CartWidgetErrorState) {
+                context.read<CartWidgetBloc>().add(CartWidgetShowErrorEvent(
+                      context: context,
+                      error: statusState.error,
+                    ));
+              }
+            },
             builder: (context, state) {
               // final visibilityState = state.visibilityState;
               // final animationState = state.animationState;
@@ -24,13 +36,11 @@ class WidgetHorizontalListCart extends StatelessWidget {
                 return const CircularProgressIndicator.adaptive();
               }
 
-              if (operationState is CartWidgetErrorState) {
-                return Text('Erro ao carregar o carrinho ${operationState.error}');
-              }
+              // if (operationState is CartWidgetErrorState) {
+              //   return Text('Erro ao carregar o carrinho ${operationState.error}');
+              // }
 
               if (operationState is CartWidgetLoadedState) {
-                print('items ${operationState.items}');
-
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -40,13 +50,13 @@ class WidgetHorizontalListCart extends StatelessWidget {
                       width: constraints.maxWidth,
                       decoration: const BoxDecoration(borderRadius: BorderRadius.only(topLeft: Radius.circular(16))),
                       child: SizedBox(
-                        key: context.read<CartWidgetBloc>().controller.cartKey,
+                        key: context.read<CartWidgetBloc>().screenController.cartKey,
                         height: double.infinity,
                         width: double.infinity,
                         child: AnimatedList(
                           padding: const EdgeInsets.only(left: 10, top: 10, bottom: 10),
-                          key: context.read<CartWidgetBloc>().controller.listKey,
-                          controller: context.read<CartWidgetBloc>().controller.scrollController,
+                          key: context.read<CartWidgetBloc>().screenController.listKey,
+                          controller: context.read<CartWidgetBloc>().screenController.scrollController,
                           scrollDirection: Axis.horizontal,
                           initialItemCount: operationState.items.length,
                           itemBuilder: (context, index, animation) {
@@ -56,14 +66,20 @@ class WidgetHorizontalListCart extends StatelessWidget {
                                 sizeFactor: animation,
                                 axis: Axis.horizontal,
                                 child: Opacity(
-                                  opacity: 1,
-                                  // opacity: controller.animatingItems.contains(state.cartItems[index]) ? 0 : 1,
+                                  // opacity: 1,
+                                  opacity: context
+                                          .read<CartWidgetBloc>()
+                                          .screenController
+                                          .animatingItems
+                                          .contains(operationState.items[index].product)
+                                      ? 0
+                                      : 1,
                                   child: Hero(
                                     tag: 'product_${operationState.items[index].product.id}',
                                     child: ClipSmoothRect(
                                       key: context
                                           .read<CartWidgetBloc>()
-                                          .controller
+                                          .screenController
                                           .cartItemKeys[operationState.items[index].product],
                                       radius: const SmoothBorderRadius.all(
                                         SmoothRadius(
@@ -93,9 +109,12 @@ class WidgetHorizontalListCart extends StatelessWidget {
                       alignment: Alignment.topCenter,
                       height: constraints.maxHeight - 70,
                       width: constraints.maxWidth,
-                      child: const Text(
-                        'Total R\$ 100',
-                        style: TextStyle(
+                      child: Text(
+                        'Total R\$ ${operationState.items.fold(
+                              0.0,
+                              (sum, item) => sum + item.product.price * item.quantity,
+                            ).toStringAsFixed(2)}',
+                        style: const TextStyle(
                           fontSize: 16,
                           color: Colors.white,
                           fontWeight: FontWeight.bold,

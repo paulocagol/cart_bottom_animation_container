@@ -42,3 +42,16 @@ class CartWidgetRemoveEvent extends CartWidgetEvent {
 class CartWidgetLoadEvent extends CartWidgetEvent {}
 
 class CartWidgetClearEvent extends CartWidgetEvent {}
+
+class CartWidgetShowErrorEvent extends CartWidgetEvent {
+  const CartWidgetShowErrorEvent({
+    required this.context,
+    required this.error,
+  });
+
+  final BuildContext context;
+  final String error;
+
+  @override
+  List<Object> get props => [error];
+}

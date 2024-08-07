@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
 
 import '../model/cart_item.dart';
 
@@ -7,9 +8,10 @@ class CartRepository {
 
   CartRepository(this._cartBox);
 
-  Future<List<CartItem>> addCartItem(CartItem cart) async {
-    await _cartBox.put(cart.id, cart);
-    return _cartBox.values.toList();
+  Future<CartItem> addCartItem(CartItem cart) async {
+    final uuid = const Uuid().v4();
+    await _cartBox.put(uuid, cart.copyWith(id: uuid));
+    return cart.copyWith(id: uuid);
   }
 
   Future<void> removeCartItem(CartItem cart) async {
