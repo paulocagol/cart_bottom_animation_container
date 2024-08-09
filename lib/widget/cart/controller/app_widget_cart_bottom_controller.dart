@@ -8,6 +8,8 @@ import 'package:smooth_sheets/smooth_sheets.dart';
 import '../../../model/cart_item.dart';
 import '../../../model/product.dart';
 
+enum CartState { visible, hidden }
+
 class AppWidgetCartBottomController {
   final BuildContext context;
 
@@ -33,11 +35,18 @@ class AppWidgetCartBottomController {
 
   ValueNotifier<double> valueNotifierCurrentExtent = ValueNotifier(0.2);
   double get currentExtent => valueNotifierCurrentExtent.value;
-  // double currentExtent = 0.2;
 
   AppWidgetCartBottomController(this.context)
-      : heroController =
-            HeroController(createRectTween: (Rect? begin, Rect? end) => MaterialRectArcTween(begin: begin, end: end)) {
+      : heroController = HeroController(
+          createRectTween: (
+            Rect? begin,
+            Rect? end,
+          ) =>
+              MaterialRectArcTween(
+            begin: begin,
+            end: end,
+          ),
+        ) {
     sheetController.addListener(() {
       final metrics = sheetController.value;
       valueNotifierCurrentExtent.value = metrics.pixels / metrics.maxPixels;
@@ -54,6 +63,7 @@ class AppWidgetCartBottomController {
     });
   }
 
+  //! VALIDAR DISPOSE
   void dispose() {
     heroController.dispose();
     sheetController.dispose();
@@ -64,6 +74,8 @@ class AppWidgetCartBottomController {
   bool get isVisible => currentExtent > 0.1;
 
   bool get isNotVisible => currentExtent < 0.1;
+
+  CartState get cartState => isVisible ? CartState.visible : CartState.hidden;
 
   Future<void> max() async {
     sheetController.animateTo(
@@ -157,6 +169,7 @@ class AppWidgetCartBottomController {
         listKey.currentState?.insertItem(0, duration: const Duration(milliseconds: 300));
         await Future.delayed(const Duration(milliseconds: 310));
 
+        if (cartState == CartState.hidden) await show();
         targetOffset = cartRenderBox.localToGlobal(Offset.zero, ancestor: deviceFrameRenderBox);
         targetOffset = (targetOffset + const Offset(10.0, 10.0));
 
@@ -225,7 +238,7 @@ class AppWidgetCartBottomController {
     Overlay.of(context).insert(overlayEntry);
     listOfControllersAnimationsOverlay.add(controller);
 
-    sizeAnimation.addStatusListener((status) {
+    sizeAnimation.addStatusListener((status) async {
       if (status == AnimationStatus.completed) {
         final entryIndex = overlayEntries.indexOf(overlayEntry);
         if (entryIndex != -1) {

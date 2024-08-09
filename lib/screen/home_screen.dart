@@ -99,15 +99,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ProductScreen.routeName,
                 arguments: product,
               ),
-              child: ClipSmoothRect(
-                radius: const SmoothBorderRadius.all(
-                  SmoothRadius(
-                    cornerRadius: 22,
-                    cornerSmoothing: 1,
+              child: Hero(
+                tag: '${product.id}-hero',
+                child: ClipSmoothRect(
+                  radius: const SmoothBorderRadius.all(
+                    SmoothRadius(
+                      cornerRadius: 22,
+                      cornerSmoothing: 1,
+                    ),
                   ),
-                ),
-                child: Hero(
-                  tag: '${product.id}-hero',
                   child: CachedNetworkImage(
                     cacheKey: product.image,
                     imageUrl: product.image,

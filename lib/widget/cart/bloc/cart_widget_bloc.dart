@@ -15,18 +15,29 @@ class CartWidgetBloc extends Bloc<CartWidgetEvent, CartWidgetState> {
   late final CartRepository _cartRepository;
   late final AppWidgetCartBottomController _screenController;
 
+  late CartWidgetVisibilityState oldVisibilityState;
+
   CartWidgetBloc({
     required CartRepository cartRepository,
     required AppWidgetCartBottomController appWidgetCartBottomController,
   }) : super((CartWidgetState(
+          visibilityState: CartWidgetVisibilityState.visible,
           animationState: CartWidgetAnimationState.idle,
-          visibilityState: CartWidgetVisibilityState.hidden,
           operationState: CartWidgetOperationInitialState(),
           statusState: CartWidgetInitialState(),
         ))) {
     _cartRepository = cartRepository;
     _screenController = appWidgetCartBottomController;
 
+    //? Guarda o estado de visibilidade do widget
+    oldVisibilityState = state.visibilityState;
+
+    //? Inicia o estado de visibilidade do widget
+    WidgetsBinding.instance.addPostFrameCallback((_) => (state.visibilityState == CartWidgetVisibilityState.hidden)
+        ? _screenController.hide()
+        : _screenController.show());
+
+    //* Listeners
     on<CartWidgetToggleEvent>(_onToggle);
     on<CartWidgetHideEvent>(_onHide);
     on<CartWidgetShowEvent>(_onShow);
@@ -42,8 +53,6 @@ class CartWidgetBloc extends Bloc<CartWidgetEvent, CartWidgetState> {
     CartWidgetToggleEvent event,
     Emitter<CartWidgetState> emit,
   ) async {
-    emit(state.copyWith(animationState: CartWidgetAnimationState.animating));
-
     var visibilityState = state.visibilityState;
 
     if (state.visibilityState == CartWidgetVisibilityState.visible) {
@@ -54,51 +63,42 @@ class CartWidgetBloc extends Bloc<CartWidgetEvent, CartWidgetState> {
       visibilityState = CartWidgetVisibilityState.visible;
     }
 
-    emit(state.copyWith(
-      visibilityState: visibilityState,
-      animationState: CartWidgetAnimationState.idle,
-    ));
+    emit(state.copyWith(visibilityState: visibilityState));
   }
 
   Future<void> _onHide(
     CartWidgetHideEvent event,
     Emitter<CartWidgetState> emit,
   ) async {
-    emit(state.copyWith(animationState: CartWidgetAnimationState.animating));
     await _screenController.hide();
-    emit(state.copyWith(
-      visibilityState: CartWidgetVisibilityState.hidden,
-      animationState: CartWidgetAnimationState.idle,
-    ));
+    emit(state.copyWith(visibilityState: CartWidgetVisibilityState.hidden));
   }
 
   Future<void> _onShow(
     CartWidgetShowEvent event,
     Emitter<CartWidgetState> emit,
   ) async {
-    emit(state.copyWith(animationState: CartWidgetAnimationState.animating));
     await _screenController.show();
-    emit(state.copyWith(
-      visibilityState: CartWidgetVisibilityState.visible,
-      animationState: CartWidgetAnimationState.idle,
-    ));
+    emit(state.copyWith(visibilityState: CartWidgetVisibilityState.visible));
   }
 
   Future<void> _onAddToCart(
     CartWidgetAddEvent event,
     Emitter<CartWidgetState> emit,
   ) async {
+    //? Guarda o estado de visibilidade do widget
+    oldVisibilityState = state.visibilityState;
+
     //? Inicia o estado de animação
-    emit(state.copyWith(
-      animationState: CartWidgetAnimationState.animating,
-      statusState: CartWidgetInitialState(),
-    ));
+    emit(state.copyWith(statusState: CartWidgetInitialState()));
 
     //? Adiciona o item ao carrinho
     final listOfOptimisticProducts = List<CartItem>.from(_getItemsFromState(state));
     final listOfProducts = List<CartItem>.from(listOfOptimisticProducts);
 
     CartItem? item = listOfOptimisticProducts.firstWhereOrNull((element) => element.product.id == event.product.id);
+
+    if (state.visibilityState == CartWidgetVisibilityState.hidden) await _screenController.show();
 
     if (item != null) {
       //? Atualiza o item ao carrinho de forma otimista
@@ -119,6 +119,9 @@ class CartWidgetBloc extends Bloc<CartWidgetEvent, CartWidgetState> {
       emit(state.copyWith(operationState: CartWidgetLoadedState(listOfOptimisticProducts)));
     }
 
+    //? Inicia o estado de animação
+    emit(state.copyWith(animationState: CartWidgetAnimationState.animating));
+
     //? Realiza a animação
     await _screenController.addItemToCart(
       vsync: event.vsync,
@@ -126,10 +129,14 @@ class CartWidgetBloc extends Bloc<CartWidgetEvent, CartWidgetState> {
       product: item.product,
       tag: event.tag,
     );
-
     //? Finaliza o estado de animação
     emit(state.copyWith(animationState: CartWidgetAnimationState.idle));
 
+    //? Restaura o estado de visibilidade do widget
+    if (oldVisibilityState == CartWidgetVisibilityState.hidden) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      await _screenController.hide();
+    }
     try {
       //? Adiciona o item ao carrinho - Backend
       final backendItem = await _cartRepository.addCartItem(item);
@@ -159,28 +166,18 @@ class CartWidgetBloc extends Bloc<CartWidgetEvent, CartWidgetState> {
     CartWidgetRemoveEvent event,
     Emitter<CartWidgetState> emit,
   ) async {
-    emit(state.copyWith(animationState: CartWidgetAnimationState.animating));
     await _cartRepository.removeCartItem(event.item);
-    emit(state.copyWith(
-      animationState: CartWidgetAnimationState.idle,
-      operationState: CartWidgetLoadedState(_cartRepository.getProducts()),
-    ));
+    emit(state.copyWith(operationState: CartWidgetLoadedState(_cartRepository.getProducts())));
   }
 
   Future<void> _onLoadCartItems(
     CartWidgetLoadEvent event,
     Emitter<CartWidgetState> emit,
   ) async {
-    emit(state.copyWith(
-      operationState: CartWidgetLoadingState(),
-      animationState: CartWidgetAnimationState.animating,
-    ));
+    emit(state.copyWith(operationState: CartWidgetLoadingState()));
     final cartItems = _cartRepository.getProducts();
     _screenController.updateCartItemKeys(cartItems);
-    emit(state.copyWith(
-      operationState: CartWidgetLoadedState(cartItems),
-      animationState: CartWidgetAnimationState.idle,
-    ));
+    emit(state.copyWith(operationState: CartWidgetLoadedState(cartItems)));
   }
 
   Future<void> _onShowError(
@@ -203,10 +200,7 @@ class CartWidgetBloc extends Bloc<CartWidgetEvent, CartWidgetState> {
     }
 
     //? Restaura o estado inicial do widget
-    emit(state.copyWith(
-      statusState: CartWidgetInitialState(),
-      animationState: CartWidgetAnimationState.idle,
-    ));
+    emit(state.copyWith(statusState: CartWidgetInitialState()));
 
     //? Mostra o widget novamente
     await _screenController.show();

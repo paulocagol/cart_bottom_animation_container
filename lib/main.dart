@@ -66,6 +66,9 @@ class WrapCartBottom extends StatelessWidget {
       ),
       child: AppWidgetCartBottom(
         child: Navigator(
+          observers: [
+            HeroController(createRectTween: (Rect? begin, Rect? end) => MaterialRectArcTween(begin: begin, end: end))
+          ],
           onGenerateRoute: (settings) {
             Widget page;
             switch (settings.name) {

@@ -66,7 +66,6 @@ class WidgetHorizontalListCart extends StatelessWidget {
                                 sizeFactor: animation,
                                 axis: Axis.horizontal,
                                 child: Opacity(
-                                  // opacity: 1,
                                   opacity: context
                                           .read<CartWidgetBloc>()
                                           .screenController
